@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BioLink Maker — Créez votre page de liens</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    /* ── MODE SYSTÈME : applique dark AVANT le paint pour éviter le flash ── */
+    (function() {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      if (mq.matches) document.documentElement.classList.add('dark');
+      mq.addEventListener('change', e => {
+        document.documentElement.classList.toggle('dark', e.matches);
+      });
+    })();
+  </script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <style>
+    :root {
+      --font-display : 'Syne', sans-serif;
+      --font-body    : 'DM Sans', sans-serif;
+    }
+    *                          { font-family: var(--font-body); }
+    h1, h2, h3, .font-display { font-family: var(--font-display); }
+    body.font-inter    * { font-family: 'Inter', sans-serif !important; }
+    body.font-playfair * { font-family: 'Playfair Display', serif !important; }
+    body.font-mono     * { font-family: 'JetBrains Mono', monospace !important; }
+
+    /* ── Noise texture ── */
+    body::before {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 999; opacity: 0.35;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+
+    /* ── Scrollbars ── */
+    ::-webkit-scrollbar       { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+    /* ── Glow border ── */
+    @keyframes borderGlow { 0%,100%{opacity:.5} 50%{opacity:1} }
+    .glow-border { position: relative; }
+    .glow-border::before {
+      content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+      background: linear-gradient(135deg,#6366f1,#8b5cf6,#06b6d4);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      animation: borderGlow 3s ease-in-out infinite;
+    }
+
+    /* ── Animations ── */
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .link-item { animation: slideUp .3s ease forwards; }
+
+    @keyframes fadeSlide { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    .visitor-link { animation: fadeSlide .5s ease forwards; opacity: 0; }
+
+    @keyframes avatarPulse {
+      0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.4)}
+      50%{box-shadow:0 0 0 14px rgba(99,102,241,0)}
+    }
+    .avatar-pulse { animation: avatarPulse 2.8s ease-in-out infinite; }
+
+    /* ── Button themes ── */
+    .theme-blue        { background: linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
+    .theme-blue:hover  { background: linear-gradient(135deg,#60a5fa,#3b82f6); }
+    .theme-insta       { background: linear-gradient(135deg,#f59e0b,#ec4899,#8b5cf6); color:#fff; }
+    .theme-insta:hover { filter:brightness(1.1); }
+    .theme-black       { background:#000; color:#fff; border:1px solid #333; }
+    .theme-black:hover { background:#1a1a1a; }
+    .theme-green       { background: linear-gradient(135deg,#10b981,#059669); color:#fff; }
+    .theme-green:hover { background: linear-gradient(135deg,#34d399,#10b981); }
+    .theme-rose        { background: linear-gradient(135deg,#f43f5e,#e11d48); color:#fff; }
+    .theme-rose:hover  { background: linear-gradient(135deg,#fb7185,#f43f5e); }
+    .theme-glass       { background:rgba(255,255,255,.10); color:#fff; border:1px solid rgba(255,255,255,.20); backdrop-filter:blur(10px); }
+    .theme-glass:hover { background:rgba(255,255,255,.18); }
+    /* ── Custom color theme (injected via JS) ── */
+    .theme-custom      { color:#fff; }
+
+    /* ── Button border styles ── */
+    .bstyle-solid  { /* default, uses theme bg */ }
+    .bstyle-outline { background: transparent !important; border: 2px solid currentColor !important; }
+    .bstyle-shadow  { box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+
+    /* ── Visitor backgrounds dark ── */
+    .vbg-dark-blue  { background: linear-gradient(160deg,#0f172a,#1e3a5f); }
+    .vbg-dark-insta { background: linear-gradient(160deg,#1a0a2e 0%,#3d1342 50%,#1a2540 100%); }
+    .vbg-dark-black { background: #000; }
+    .vbg-dark-green { background: linear-gradient(160deg,#052e16,#0f172a); }
+    .vbg-dark-rose  { background: linear-gradient(160deg,#1f0a10,#0f172a); }
+    .vbg-dark-glass { background: linear-gradient(160deg,#0f172a,#1e293b); }
+    .vbg-dark-custom{ background: linear-gradient(160deg,#0f172a,#1e293b); }
+
+    /* ── Visitor backgrounds light ── */
+    .vbg-light-blue  { background: linear-gradient(160deg,#eff6ff,#dbeafe); }
+    .vbg-light-insta { background: linear-gradient(160deg,#fdf2f8 0%,#f3e8ff 50%,#dbeafe 100%); }
+    .vbg-light-black { background: #f8fafc; }
+    .vbg-light-green { background: linear-gradient(160deg,#ecfdf5,#d1fae5); }
+    .vbg-light-rose  { background: linear-gradient(160deg,#fff1f2,#fce7f3); }
+    .vbg-light-glass { background: linear-gradient(160deg,#f1f5f9,#e2e8f0); }
+    .vbg-light-custom{ background: linear-gradient(160deg,#f1f5f9,#e2e8f0); }
+
+    .visitor-light #v-name            { color:#1e293b !important; }
+    .visitor-light #v-bio             { color:#475569 !important; }
+    .visitor-light .visitor-watermark { color:#94a3b8 !important; }
+    .visitor-light .visitor-separator { color:#64748b !important; }
+
+    /* ── Section separator (visitor) ── */
+    .visitor-separator {
+      text-align: center; font-size: .7rem; letter-spacing: .12em;
+      text-transform: uppercase; color: rgba(255,255,255,.45);
+      font-weight: 700; padding: .5rem 0 .25rem;
+    }
+
+    /* ── URL display textarea ── */
+    #url-display {
+      font-family: 'JetBrains Mono','Courier New',monospace;
+      font-size:.72rem; line-height:1.6; letter-spacing:.01em; color:#cbd5e1;
+      background-color:#1e293b; border:1.5px solid #334155; border-radius:.75rem;
+      width:100%; min-height:4.5rem; max-height:7rem;
+      resize:none; overflow-y:auto; overflow-x:hidden;
+      padding:.875rem 1rem;
+      user-select:text; -webkit-user-select:text; cursor:text;
+      outline:none; transition:border-color .2s ease,box-shadow .2s ease;
+      word-break:break-all; white-space:pre-wrap;
+    }
+    #url-display:hover { border-color:#4f46e5; }
+    #url-display:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.18); }
+    #url-display.copy-success { border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.18); }
+    #url-display::-webkit-scrollbar       { width:3px; }
+    #url-display::-webkit-scrollbar-track { background:#1e293b; }
+    #url-display::-webkit-scrollbar-thumb { background:#475569; border-radius:2px; }
+
+    /* ── Option active state ── */
+    .opt-active {
+      border-color:#6366f1 !important;
+      background-color:rgba(99,102,241,.10) !important;
+      color:#a5b4fc !important;
+    }
+
+    /* ── Dark mode UI overrides (creator) ── */
+    .dark .creator-card   { background:#0f172a; border-color:#1e293b; }
+    .dark .creator-input  { background:#1e293b; border-color:#334155; color:#f1f5f9; }
+    .dark body            { background:#020617; }
+    html.dark body        { background:#020617; }
+
+    /* ── Import hidden input ── */
+    #import-file-input { display:none; }
+
+    /* ── Toast notification ── */
+    #toast {
+      position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(2rem);
+      background:#1e293b; border:1px solid #334155; color:#e2e8f0;
+      padding:.6rem 1.2rem; border-radius:9999px; font-size:.8rem;
+      opacity:0; transition:opacity .25s ease, transform .25s ease;
+      z-index:9999; pointer-events:none; white-space:nowrap;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #toast.toast-ok   { border-color:#10b981; color:#6ee7b7; }
+    #toast.toast-err  { border-color:#f43f5e; color:#fda4af; }
+
+    /* ── Color picker swatch ── */
+    #inp-custom-color {
+      width:2.5rem; height:2.5rem; border:none; padding:0; cursor:pointer;
+      border-radius:.5rem; overflow:hidden; background:transparent;
+    }
+  </style>
+</head>
+
+<!-- ════════════════════════════════════════════════════════════
+     Light/dark body classes handled by tailwind darkMode:'class'
+════════════════════════════════════════════════════════════ -->
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-300">
+
+<!-- ═══════════ TOAST ═══════════ -->
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════════
+     CREATOR INTERFACE
+════════════════════════════════════════════════════════════ -->
+<div id="creator-app">
+
+  <!-- ── NAV ── -->
+  <nav class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50 transition-colors duration-300">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <i class="fa-solid fa-link text-white text-xs"></i>
+        </div>
+        <span class="font-display font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100">
+          BioLink<span class="text-indigo-500">Maker</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="hidden sm:inline text-xs text-slate-400 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-full">
+          100% URL · Sans BDD
+        </span>
+
+        <!-- System mode indicator -->
+        <div id="sys-mode-badge"
+          class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-full">
+          <i id="sys-mode-icon" class="fa-solid fa-moon text-indigo-400 text-[11px]"></i>
+          <span id="sys-mode-label">Système : Sombre</span>
+        </div>
+
+        <!-- Page visitor mode toggle -->
+        <button id="mode-toggle-btn" onclick="togglePageMode()"
+          title="Mode de la page visiteur"
+          class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-300 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500/50 px-3 py-1.5 rounded-full transition-all duration-200">
+          <i id="mode-icon" class="fa-solid fa-moon text-indigo-400 text-[11px]"></i>
+          <span id="mode-label" class="hidden sm:inline">Page sombre</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+
+  <!-- ── MAIN GRID ── -->
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10 grid lg:grid-cols-5 gap-8">
+
+    <!-- ═══════════════════════════════════
+         EDITOR PANEL (left, 3 cols)
+    ═══════════════════════════════════ -->
+    <div class="lg:col-span-3 space-y-6">
+
+      <!-- Title -->
+      <div>
+        <h1 class="font-display text-3xl font-extrabold leading-tight">
+          Créez votre
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">page de liens</span>
+        </h1>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-1.5">
+          Personnalisez, générez un lien unique et partagez-le en un clic.
+        </p>
+      </div>
+
+
+      <!-- ══════════════ SECTION : SAUVEGARDE ══════════════ -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5">
+        <h2 class="font-display font-semibold text-xs uppercase tracking-widest text-slate-400 mb-4">
+          <i class="fa-solid fa-floppy-disk mr-1.5 text-indigo-400"></i> Sauvegarde
+        </h2>
+        <div class="flex flex-wrap gap-2">
+
+          <button onclick="exportJSON()"
+            class="flex items-center gap-2 text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl transition font-semibold">
+            <i class="fa-solid fa-download"></i>
+            Exporter ma config
+          </button>
+
+          <button onclick="document.getElementById('import-file-input').click()"
+            class="flex items-center gap-2 text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3.5 py-2 rounded-xl transition font-semibold">
+            <i class="fa-solid fa-upload"></i>
+            Importer un fichier
+          </button>
+          <input type="file" id="import-file-input" accept=".json" onchange="importJSON(event)" />
+
+          <div class="ml-auto flex items-center gap-1.5 text-xs text-slate-400">
+            <i class="fa-solid fa-circle-dot text-emerald-400 text-[9px]" id="ls-dot"></i>
+            <span id="ls-label">Auto-sauvegarde active</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ══════════════ SECTION : IDENTITÉ ══════════════ -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5">
+        <h2 class="font-display font-semibold text-sm uppercase tracking-widest text-slate-400">Identité</h2>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Nom / Pseudo</label>
+            <input id="inp-name" type="text" placeholder="ex: Alex Martin 🚀" maxlength="60"
+              class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1.5">Bio courte</label>
+            <textarea id="inp-bio" placeholder="Designer • Dev • Créateur de contenu ✨" rows="2" maxlength="160"
+              class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition resize-none"></textarea>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 dark:border-slate-800"></div>
+
+        <!-- Avatar type -->
+        <div class="space-y-3">
+          <label class="block text-xs font-medium text-slate-400">Style d'avatar</label>
+          <div class="grid grid-cols-3 gap-2">
+
+            <button data-av="lt" onclick="selectAvatarType(this)"
+              class="av-type-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xs">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold">A</div>
+              Initiale
+            </button>
+
+            <button data-av="em" onclick="selectAvatarType(this)"
+              class="av-type-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xs">
+              <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-2xl">😊</div>
+              Emoji
+            </button>
+
+            <button data-av="im" onclick="selectAvatarType(this)"
+              class="av-type-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xs">
+              <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+                <i class="fa-solid fa-image text-slate-400 text-lg"></i>
+              </div>
+              Image URL
+            </button>
+
+          </div>
+
+          <div id="avatar-emoji-wrap" class="hidden">
+            <label class="block text-xs text-slate-400 mb-1.5">Choisissez un emoji</label>
+            <input id="inp-avatar-emoji" type="text" placeholder="😊" maxlength="4"
+              class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-3xl text-center text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+              oninput="updatePreview()" />
+          </div>
+
+          <div id="avatar-image-wrap" class="hidden">
+            <label class="block text-xs text-slate-400 mb-1.5">URL de votre photo</label>
+            <input id="inp-avatar-img" type="url" placeholder="https://example.com/photo.jpg"
+              class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+              oninput="updatePreview()" />
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ══════════════ SECTION : THÈME ══════════════ -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5">
+        <h2 class="font-display font-semibold text-sm uppercase tracking-widest text-slate-400">Thème des boutons</h2>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <button data-theme="blue" onclick="selectTheme(this)"
+            class="theme-opt group flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">
+            <div class="w-full h-8 rounded-lg bg-gradient-to-r from-blue-500 to-blue-700"></div>
+            <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition">Bleu classique</span>
+          </button>
+          <button data-theme="insta" onclick="selectTheme(this)"
+            class="theme-opt group flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">
+            <div class="w-full h-8 rounded-lg bg-gradient-to-r from-amber-400 via-pink-500 to-violet-500"></div>
+            <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition">Dégradé Insta</span>
+          </button>
+          <button data-theme="black" onclick="selectTheme(this)"
+            class="theme-opt group flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">
+            <div class="w-full h-8 rounded-lg bg-gradient-to-r from-zinc-900 to-zinc-700 border border-zinc-600"></div>
+            <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition">Noir minimaliste</span>
+          </button>
+          <button data-theme="green" onclick="selectTheme(this)"
+            class="theme-opt group flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">
+            <div class="w-full h-8 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600"></div>
+            <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition">Vert nature</span>
+          </button>
+          <button data-theme="rose" onclick="selectTheme(this)"
+            class="theme-opt group flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">
+            <div class="w-full h-8 rounded-lg bg-gradient-to-r from-rose-500 to-pink-600"></div>
+            <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition">Rose vibrant</span>
+          </button>
+          <button data-theme="glass" onclick="selectTheme(this)"
+            class="theme-opt group flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition">
+            <div class="w-full h-8 rounded-lg bg-white/10 border border-white/20 backdrop-blur-sm dark:bg-white/10"></div>
+            <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition">Verre givré</span>
+          </button>
+        </div>
+
+        <!-- ── Couleur personnalisée ── -->
+        <div class="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-2">
+          <label class="block text-xs font-medium text-slate-400">Couleur personnalisée (remplace le thème)</label>
+          <div class="flex items-center gap-3">
+            <input type="color" id="inp-custom-color" value="#6366f1"
+              title="Choisir une couleur"
+              oninput="onCustomColorChange()" />
+            <div class="flex-1">
+              <div id="custom-color-preview"
+                class="h-8 rounded-xl transition-all duration-300"
+                style="background:#6366f1"></div>
+            </div>
+            <button onclick="clearCustomColor()"
+              id="custom-color-clear"
+              class="hidden text-xs text-slate-400 hover:text-rose-400 transition">
+              <i class="fa-solid fa-xmark"></i> Désactiver
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-500">Activé = surpasse le thème ci-dessus. Cliquez "Désactiver" pour revenir aux thèmes.</p>
+        </div>
+      </div>
+
+
+      <!-- ══════════════ SECTION : STYLE & TYPO ══════════════ -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
+        <h2 class="font-display font-semibold text-sm uppercase tracking-widest text-slate-400">Style &amp; Typographie</h2>
+
+        <!-- Arrondi -->
+        <div class="space-y-2.5">
+          <label class="block text-xs font-medium text-slate-400">Arrondi des boutons</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button data-radius="rounded-none" onclick="selectRadius(this)"
+              class="radius-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 transition text-xs">
+              <div class="w-12 h-5 bg-indigo-500/25 border border-indigo-400/40 rounded-none"></div>Carré
+            </button>
+            <button data-radius="rounded-xl" onclick="selectRadius(this)"
+              class="radius-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 transition text-xs">
+              <div class="w-12 h-5 bg-indigo-500/25 border border-indigo-400/40 rounded-xl"></div>Arrondi
+            </button>
+            <button data-radius="rounded-full" onclick="selectRadius(this)"
+              class="radius-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 transition text-xs">
+              <div class="w-12 h-5 bg-indigo-500/25 border border-indigo-400/40 rounded-full"></div>Pilule
+            </button>
+          </div>
+        </div>
+
+        <!-- Style de bordure -->
+        <div class="space-y-2.5">
+          <label class="block text-xs font-medium text-slate-400">Style de bordure des boutons</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button data-bstyle="solid" onclick="selectBorderStyle(this)"
+              class="bstyle-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 transition text-xs">
+              <div class="w-12 h-5 bg-indigo-500 rounded-lg"></div>Plein
+            </button>
+            <button data-bstyle="outline" onclick="selectBorderStyle(this)"
+              class="bstyle-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 transition text-xs">
+              <div class="w-12 h-5 bg-transparent border-2 border-indigo-500 rounded-lg"></div>Contour
+            </button>
+            <button data-bstyle="shadow" onclick="selectBorderStyle(this)"
+              class="bstyle-opt flex flex-col items-center gap-2 py-3 px-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 text-slate-400 transition text-xs">
+              <div class="w-12 h-5 bg-indigo-500 rounded-lg shadow-lg shadow-indigo-500/60"></div>Ombre
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 dark:border-slate-800"></div>
+
+        <!-- Police -->
+        <div class="space-y-2.5">
+          <label class="block text-xs font-medium text-slate-400">Typographie</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button data-font="syne" onclick="selectFont(this)"
+              class="font-opt flex flex-col items-start gap-1 p-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition group">
+              <span class="text-lg font-bold text-slate-700 dark:text-slate-200 leading-none" style="font-family:'Syne',sans-serif">Aa</span>
+              <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition">Moderne · Syne</span>
+            </button>
+            <button data-font="inter" onclick="selectFont(this)"
+              class="font-opt flex flex-col items-start gap-1 p-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition group">
+              <span class="text-lg font-bold text-slate-700 dark:text-slate-200 leading-none" style="font-family:'Inter',sans-serif">Aa</span>
+              <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition">Propre · Inter</span>
+            </button>
+            <button data-font="playfair" onclick="selectFont(this)"
+              class="font-opt flex flex-col items-start gap-1 p-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition group">
+              <span class="text-lg font-bold text-slate-700 dark:text-slate-200 leading-none" style="font-family:'Playfair Display',serif">Aa</span>
+              <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition">Élégant · Playfair</span>
+            </button>
+            <button data-font="mono" onclick="selectFont(this)"
+              class="font-opt flex flex-col items-start gap-1 p-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-indigo-500 transition group">
+              <span class="text-lg font-bold text-slate-700 dark:text-slate-200 leading-none" style="font-family:'JetBrains Mono',monospace">Aa</span>
+              <span class="text-xs text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition">Technique · Mono</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ══════════════ SECTION : LIENS ══════════════ -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
+
+        <div class="flex items-center justify-between">
+          <h2 class="font-display font-semibold text-sm uppercase tracking-widest text-slate-400">Liens</h2>
+          <div class="flex items-center gap-2">
+            <span id="link-count" class="text-xs bg-indigo-500/20 text-indigo-400 dark:text-indigo-300 px-2 py-0.5 rounded-full">0 lien</span>
+            <span class="text-xs text-slate-400 hidden sm:inline">· icônes auto</span>
+          </div>
+        </div>
+
+        <div id="links-container" class="space-y-3"></div>
+
+        <!-- Add buttons -->
+        <div class="flex gap-2">
+          <button onclick="addLink()"
+            class="flex-1 flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-indigo-500 hover:text-indigo-400 transition group">
+            <i class="fa-solid fa-plus text-xs transition-transform duration-300 group-hover:rotate-90"></i>
+            Ajouter un lien
+          </button>
+          <button onclick="addSeparator()"
+            class="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-violet-500 hover:text-violet-400 transition"
+            title="Ajouter un titre de section">
+            <i class="fa-solid fa-heading text-xs"></i>
+            <span class="hidden sm:inline">Titre</span>
+          </button>
+        </div>
+
+      </div>
+
+
+      <!-- ══════════════ GENERATE BUTTON ══════════════ -->
+      <button onclick="generateURL()"
+        class="w-full relative overflow-hidden font-display font-bold text-white py-4 rounded-2xl text-base tracking-wide transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-500/30 active:scale-[0.99]"
+        style="background:linear-gradient(135deg,#6366f1,#8b5cf6,#06b6d4)">
+        <span class="relative z-10 flex items-center justify-center gap-2.5">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          Générer mon lien de partage
+        </span>
+        <span class="absolute inset-0 bg-white/10 opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
+      </button>
+
+
+      <!-- ══════════════ URL OUTPUT ══════════════ -->
+      <div id="url-output" class="hidden glow-border rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+
+        <div class="flex items-center gap-2 text-emerald-500 dark:text-emerald-400">
+          <i class="fa-solid fa-circle-check text-sm"></i>
+          <span class="text-sm font-medium">Lien généré avec succès !</span>
+        </div>
+
+        <p class="text-xs text-slate-400">Cliquez sur le lien pour le sélectionner, puis copiez-le.</p>
+
+        <textarea id="url-display" readonly onclick="this.select();"
+          placeholder="Votre lien apparaîtra ici…"
+          spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+
+        <div class="flex gap-2">
+          <button onclick="copyURL()" id="copy-btn"
+            class="flex-1 flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl shadow-xl active:scale-95 transition-all">
+            <i id="copy-icon" class="fa-regular fa-copy text-sm"></i>
+            <span id="copy-label">Copier le lien</span>
+          </button>
+          <a id="preview-btn" href="#" target="_blank" rel="noopener noreferrer"
+            class="flex items-center justify-center bg-slate-100 dark:bg-slate-800 px-6 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+            title="Ouvrir la page visiteur">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </div>
+
+      </div>
+
+    </div><!-- /editor panel -->
+
+
+    <!-- ═══════════════════════════════════
+         PREVIEW PANEL (right, 2 cols)
+    ═══════════════════════════════════ -->
+    <div class="hidden lg:flex lg:col-span-2 flex-col">
+      <div class="sticky top-24">
+
+        <p class="text-xs text-slate-400 uppercase tracking-widest mb-3 font-medium">Aperçu en direct</p>
+
+        <div class="relative mx-auto w-[240px]">
+          <div class="bg-slate-300 dark:bg-slate-800 border-2 border-slate-400 dark:border-slate-700 rounded-[2rem] overflow-hidden shadow-2xl shadow-black/40">
+
+            <!-- Notch -->
+            <div class="bg-slate-300 dark:bg-slate-800 flex justify-center pt-2 pb-1">
+              <div class="w-16 h-1.5 bg-slate-400 dark:bg-slate-700 rounded-full"></div>
+            </div>
+
+            <!-- Screen -->
+            <div id="preview-screen"
+              class="bg-slate-950 min-h-[440px] p-4 flex flex-col items-center gap-3 transition-all duration-500 overflow-hidden">
+
+              <div class="text-center mt-3 space-y-1.5 w-full">
+                <div id="prev-avatar"
+                  class="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold mx-auto overflow-hidden">?</div>
+                <p id="prev-name" class="font-bold text-white text-sm mt-1">Votre Nom</p>
+                <p id="prev-bio" class="text-slate-400 text-[10px] leading-relaxed px-2">Votre bio…</p>
+              </div>
+
+              <div id="prev-links" class="w-full space-y-1.5 mt-1"></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+</div><!-- /#creator-app -->
+
+
+<!-- ════════════════════════════════════════════════════════════
+     VISITOR INTERFACE
+════════════════════════════════════════════════════════════ -->
+<div id="visitor-app" class="hidden min-h-screen flex items-center justify-center py-16 px-4 transition-all duration-500">
+  <div class="w-full max-w-sm mx-auto">
+
+    <div class="text-center mb-8 space-y-3">
+      <div id="v-avatar"
+        class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold mx-auto avatar-pulse shadow-xl overflow-hidden"></div>
+      <div>
+        <h1 id="v-name" class="font-display font-extrabold text-2xl text-white"></h1>
+        <p id="v-bio" class="text-slate-400 text-sm mt-1.5 leading-relaxed max-w-xs mx-auto"></p>
+      </div>
+    </div>
+
+    <div id="v-links" class="space-y-3"></div>
+
+    <p class="visitor-watermark text-center text-slate-600 text-xs mt-12">
+      Créé avec <span class="text-indigo-400 font-medium">BioLink Maker</span>
+    </p>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════
+   1. GLOBAL STATE
+══════════════════════════════════════════════════════════════ */
+let selectedTheme       = 'blue';
+let selectedRadius      = 'rounded-xl';
+let selectedFont        = 'syne';
+let selectedDarkMode    = 1;        // 1 = dark, 0 = light (visitor page)
+let selectedAvatarType  = 'lt';
+let selectedBorderStyle = 'solid';
+let selectedCustomColor = '';       // '' = disabled, '#xxxxxx' = active
+let linkIdCounter       = 0;
+
+const LS_KEY = 'biolink_autosave_v2'; // localStorage key
+
+
+/* ══════════════════════════════════════════════════════════════
+   2. CONSTANTS & MAPS
+══════════════════════════════════════════════════════════════ */
+const VISITOR_BG = {
+  dark : { blue:'vbg-dark-blue', insta:'vbg-dark-insta', black:'vbg-dark-black', green:'vbg-dark-green', rose:'vbg-dark-rose', glass:'vbg-dark-glass', custom:'vbg-dark-custom' },
+  light: { blue:'vbg-light-blue',insta:'vbg-light-insta',black:'vbg-light-black',green:'vbg-light-green',rose:'vbg-light-rose',glass:'vbg-light-glass',custom:'vbg-light-custom' }
+};
+
+const PREVIEW_BG = {
+  blue:'bg-slate-950', insta:'bg-[#1a0a2e]', black:'bg-black',
+  green:'bg-[#052e16]', rose:'bg-[#1f0a10]', glass:'bg-slate-950', custom:'bg-slate-950'
+};
+
+const FONT_STACK = {
+  syne    : "'Syne', sans-serif",
+  inter   : "'Inter', sans-serif",
+  playfair: "'Playfair Display', serif",
+  mono    : "'JetBrains Mono', monospace"
+};
+
+const ICON_KEYWORDS = {
+  'instagram':'fa-brands fa-instagram','insta':'fa-brands fa-instagram',
+  'twitter':'fa-brands fa-x-twitter','x.com':'fa-brands fa-x-twitter',
+  'tiktok':'fa-brands fa-tiktok','youtube':'fa-brands fa-youtube',
+  'facebook':'fa-brands fa-facebook-f','linkedin':'fa-brands fa-linkedin-in',
+  'github':'fa-brands fa-github','discord':'fa-brands fa-discord',
+  'twitch':'fa-brands fa-twitch','spotify':'fa-brands fa-spotify',
+  'snapchat':'fa-brands fa-snapchat','snap':'fa-brands fa-snapchat',
+  'pinterest':'fa-brands fa-pinterest-p','reddit':'fa-brands fa-reddit-alien',
+  'telegram':'fa-brands fa-telegram','whatsapp':'fa-brands fa-whatsapp',
+  'patreon':'fa-brands fa-patreon','paypal':'fa-brands fa-paypal',
+  'mastodon':'fa-brands fa-mastodon','threads':'fa-brands fa-threads',
+  'substack':'fa-solid fa-newspaper','newsletter':'fa-solid fa-newspaper',
+  'podcast':'fa-solid fa-microphone-lines','blog':'fa-solid fa-pen-nib',
+  'article':'fa-solid fa-pen-nib','musique':'fa-solid fa-music','music':'fa-solid fa-music',
+  'photo':'fa-solid fa-camera','video':'fa-solid fa-video',
+  'shop':'fa-solid fa-bag-shopping','boutique':'fa-solid fa-bag-shopping',
+  'store':'fa-solid fa-store','email':'fa-solid fa-envelope','mail':'fa-solid fa-envelope',
+  'contact':'fa-solid fa-envelope','don':'fa-solid fa-heart','donate':'fa-solid fa-heart',
+  'tip':'fa-solid fa-heart','portfolio':'fa-solid fa-briefcase',
+  'cv':'fa-solid fa-file-lines','resume':'fa-solid fa-file-lines',
+  'site':'fa-solid fa-globe','website':'fa-solid fa-globe',
+  'lien':'fa-solid fa-link','link':'fa-solid fa-link',
+};
+
+
+/* ══════════════════════════════════════════════════════════════
+   3. ROUTING — runs immediately
+══════════════════════════════════════════════════════════════ */
+(function route() {
+  const params  = new URLSearchParams(window.location.search);
+  const payload = params.get('p');
+  if (!payload) return;
+
+  const visitorApp = document.getElementById('visitor-app');
+  const creatorApp = document.getElementById('creator-app');
+
+  try {
+    const json = decodeURIComponent(atob(payload));
+    const data = JSON.parse(json);
+    renderVisitor(data);
+  } catch (err) {
+    visitorApp.innerHTML = `
+      <div class="text-center py-24 px-6 text-slate-400">
+        <i class="fa-solid fa-triangle-exclamation text-5xl text-slate-700 mb-5 block"></i>
+        <p class="font-display text-xl font-semibold text-slate-300 mb-2">Lien invalide ou corrompu</p>
+        <p class="text-sm text-slate-500">L'URL a peut-être été modifiée manuellement.</p>
+        <a href="${window.location.pathname}" class="inline-flex items-center gap-2 mt-6 text-indigo-400 text-sm hover:text-indigo-300 transition">
+          <i class="fa-solid fa-arrow-left text-xs"></i> Créer ma propre page
+        </a>
+      </div>`;
+    visitorApp.className = 'min-h-screen flex items-center justify-center vbg-dark-blue';
+  }
+
+  visitorApp.classList.remove('hidden');
+  creatorApp.remove();
+})();
+
+
+/* ══════════════════════════════════════════════════════════════
+   4. SYSTEM DARK MODE — updates creator UI badge
+══════════════════════════════════════════════════════════════ */
+function updateSystemModeBadge() {
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const icon   = document.getElementById('sys-mode-icon');
+  const label  = document.getElementById('sys-mode-label');
+  if (!icon || !label) return;
+  icon.className    = isDark
+    ? 'fa-solid fa-moon text-indigo-400 text-[11px]'
+    : 'fa-solid fa-sun text-amber-400 text-[11px]';
+  label.textContent = isDark ? 'Système : Sombre' : 'Système : Clair';
+}
+
+// Live listener — user changes system theme at runtime
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  document.documentElement.classList.toggle('dark', e.matches);
+  updateSystemModeBadge();
+  updatePreview(); // Refresh preview colors
+});
+
+
+/* ══════════════════════════════════════════════════════════════
+   5. OPTION SELECTORS
+══════════════════════════════════════════════════════════════ */
+function selectTheme(btn) {
+  document.querySelectorAll('.theme-opt').forEach(b => b.classList.remove('border-indigo-500','bg-indigo-500/10'));
+  btn.classList.add('border-indigo-500','bg-indigo-500/10');
+  selectedTheme = btn.dataset.theme;
+  // Disable custom color when a preset is picked
+  selectedCustomColor = '';
+  document.getElementById('custom-color-clear').classList.add('hidden');
+  updatePreview();
+}
+
+function selectRadius(btn) {
+  document.querySelectorAll('.radius-opt').forEach(b => b.classList.remove('opt-active'));
+  btn.classList.add('opt-active');
+  selectedRadius = btn.dataset.radius;
+  updatePreview();
+}
+
+function selectFont(btn) {
+  document.querySelectorAll('.font-opt').forEach(b => b.classList.remove('opt-active'));
+  btn.classList.add('opt-active');
+  selectedFont = btn.dataset.font;
+  updatePreview();
+}
+
+function selectAvatarType(btn) {
+  document.querySelectorAll('.av-type-opt').forEach(b => b.classList.remove('opt-active'));
+  btn.classList.add('opt-active');
+  selectedAvatarType = btn.dataset.av;
+  document.getElementById('avatar-emoji-wrap').classList.toggle('hidden', selectedAvatarType !== 'em');
+  document.getElementById('avatar-image-wrap').classList.toggle('hidden', selectedAvatarType !== 'im');
+  updatePreview();
+}
+
+function selectBorderStyle(btn) {
+  document.querySelectorAll('.bstyle-opt').forEach(b => b.classList.remove('opt-active'));
+  btn.classList.add('opt-active');
+  selectedBorderStyle = btn.dataset.bstyle;
+  updatePreview();
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   6. CUSTOM COLOR
+══════════════════════════════════════════════════════════════ */
+function onCustomColorChange() {
+  const color = document.getElementById('inp-custom-color').value;
+  selectedCustomColor = color;
+  document.getElementById('custom-color-preview').style.background = color;
+  document.getElementById('custom-color-clear').classList.remove('hidden');
+  // Deactivate preset themes visually
+  document.querySelectorAll('.theme-opt').forEach(b => b.classList.remove('border-indigo-500','bg-indigo-500/10'));
+  // Inject a dynamic style for .theme-custom
+  injectCustomColorStyle(color);
+  updatePreview();
+}
+
+function clearCustomColor() {
+  selectedCustomColor = '';
+  document.getElementById('custom-color-clear').classList.add('hidden');
+  // Re-activate default theme
+  const defaultTheme = document.querySelector('.theme-opt[data-theme="blue"]');
+  if (defaultTheme) selectTheme(defaultTheme);
+  else updatePreview();
+}
+
+function injectCustomColorStyle(color) {
+  let el = document.getElementById('custom-color-style');
+  if (!el) {
+    el = document.createElement('style');
+    el.id = 'custom-color-style';
+    document.head.appendChild(el);
+  }
+  el.textContent = `
+    .theme-custom { background: ${color} !important; color: #fff !important; }
+    .theme-custom:hover { filter: brightness(1.12) !important; }
+  `;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   7. VISITOR PAGE MODE TOGGLE
+══════════════════════════════════════════════════════════════ */
+function togglePageMode() {
+  selectedDarkMode = selectedDarkMode === 1 ? 0 : 1;
+  const icon  = document.getElementById('mode-icon');
+  const label = document.getElementById('mode-label');
+  icon.className    = selectedDarkMode === 1 ? 'fa-solid fa-moon text-indigo-400 text-[11px]' : 'fa-solid fa-sun text-amber-400 text-[11px]';
+  label.textContent = selectedDarkMode === 1 ? 'Page sombre' : 'Page claire';
+  updatePreview();
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   8. LINKS MANAGEMENT
+══════════════════════════════════════════════════════════════ */
+function addLink() {
+  const container = document.getElementById('links-container');
+  const id = ++linkIdCounter;
+  const div = document.createElement('div');
+  div.className  = 'link-item bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 relative';
+  div.dataset.id = id;
+  div.dataset.type = 'link';
+  div.innerHTML = `
+    <button onclick="removeLink(${id})" class="absolute top-3 right-3 text-slate-400 hover:text-rose-400 transition">
+      <i class="fa-solid fa-xmark text-sm"></i>
+    </button>
+    <div class="mb-2.5">
+      <span id="icon-badge-${id}" class="inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-200 dark:bg-slate-900 px-2 py-0.5 rounded-full transition-all">
+        <i class="fa-solid fa-link text-[10px]"></i> Icône auto
+      </span>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Titre du bouton</label>
+        <input type="text" placeholder="ex: Mon Instagram" maxlength="40"
+          class="link-title w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+          oninput="onTitleChange(this,${id})" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">URL</label>
+        <input type="url" placeholder="https://…"
+          class="link-url w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+          oninput="autoSave();updatePreview()" />
+      </div>
+    </div>`;
+  container.appendChild(div);
+  updateLinkCount();
+  updatePreview();
+}
+
+function addSeparator() {
+  const container = document.getElementById('links-container');
+  const id = ++linkIdCounter;
+  const div = document.createElement('div');
+  div.className  = 'link-item bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/50 rounded-xl p-4 relative';
+  div.dataset.id = id;
+  div.dataset.type = 'sep';
+  div.innerHTML = `
+    <button onclick="removeLink(${id})" class="absolute top-3 right-3 text-slate-400 hover:text-rose-400 transition">
+      <i class="fa-solid fa-xmark text-sm"></i>
+    </button>
+    <div class="flex items-center gap-2 mb-2">
+      <i class="fa-solid fa-heading text-violet-400 text-xs"></i>
+      <span class="text-xs text-violet-400 font-semibold uppercase tracking-wider">Titre de section</span>
+    </div>
+    <input type="text" placeholder="ex: Mes Réseaux • Mes Projets" maxlength="50"
+      class="link-title w-full bg-white dark:bg-slate-900 border border-violet-200 dark:border-violet-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
+      oninput="autoSave();updatePreview()" />`;
+  container.appendChild(div);
+  updateLinkCount();
+  updatePreview();
+}
+
+function removeLink(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  el.style.transition = 'opacity .18s ease, transform .18s ease';
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(-6px)';
+  setTimeout(() => { el.remove(); updateLinkCount(); updatePreview(); }, 190);
+}
+
+function onTitleChange(input, id) {
+  const icon  = detectIcon(input.value);
+  const badge = document.getElementById(`icon-badge-${id}`);
+  if (!badge) return;
+  const isGeneric = icon === 'fa-solid fa-link';
+  badge.innerHTML = `<i class="${icon} text-[10px]"></i> Icône auto`;
+  badge.className = isGeneric
+    ? 'inline-flex items-center gap-1.5 text-xs text-slate-400 bg-slate-200 dark:bg-slate-900 px-2 py-0.5 rounded-full transition-all'
+    : 'inline-flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full transition-all';
+  autoSave();
+  updatePreview();
+}
+
+function updateLinkCount() {
+  const n = document.querySelectorAll('#links-container [data-id]').length;
+  document.getElementById('link-count').textContent = n === 0 ? '0 lien' : `${n} bloc${n > 1 ? 's' : ''}`;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   9. ICON DETECTION
+══════════════════════════════════════════════════════════════ */
+function detectIcon(title) {
+  const lower = (title || '').toLowerCase();
+  for (const [kw, cls] of Object.entries(ICON_KEYWORDS)) {
+    if (lower.includes(kw)) return cls;
+  }
+  return 'fa-solid fa-link';
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   10. DATA COLLECTION (compact keys)
+══════════════════════════════════════════════════════════════ */
+function collectData() {
+  const n  = document.getElementById('inp-name').value.trim();
+  const b  = document.getElementById('inp-bio').value.trim();
+  const av = selectedAvatarType;
+  let ac = '';
+  if (av === 'em') ac = document.getElementById('inp-avatar-emoji').value.trim();
+  else if (av === 'im') ac = document.getElementById('inp-avatar-img').value.trim();
+
+  const l = [];
+  document.querySelectorAll('#links-container [data-id]').forEach(div => {
+    const type = div.dataset.type || 'link';
+    const t    = div.querySelector('.link-title')?.value.trim() || '';
+    const u    = type === 'link' ? (div.querySelector('.link-url')?.value.trim() || '') : '';
+    if (t || u) l.push({ type, t, u });
+  });
+
+  return {
+    n, b,
+    t: selectedCustomColor ? 'custom' : selectedTheme,
+    cc: selectedCustomColor,   // custom color hex
+    bs: selectedBorderStyle,   // border style
+    r: selectedRadius,
+    f: selectedFont,
+    m: selectedDarkMode,
+    av, ac, l
+  };
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   11. URL GENERATION
+══════════════════════════════════════════════════════════════ */
+function generateURL() {
+  try {
+    const data = collectData();
+    if (!data.n && data.l.length === 0) {
+      const btn = document.querySelector('[onclick="generateURL()"]');
+      btn.classList.add('animate-bounce');
+      setTimeout(() => btn.classList.remove('animate-bounce'), 600);
+      return;
+    }
+
+    const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+    const fullURL = `${window.location.origin}${window.location.pathname}?p=${encoded}`;
+
+    const textarea = document.getElementById('url-display');
+    textarea.value = fullURL;
+    textarea.classList.remove('copy-success');
+
+    document.getElementById('preview-btn').href = fullURL;
+
+    const out = document.getElementById('url-output');
+    out.classList.remove('hidden');
+    out.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+    // Auto-select for easy copy — no setTimeout on focus to avoid mobile issues
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+  } catch (err) {
+    console.error('generateURL error:', err);
+    showToast('Erreur lors de la génération.', 'err');
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   12. COPY URL — triple-safety
+       M1: navigator.clipboard   (HTTPS, modern)
+       M2: .focus()/.select()/.setSelectionRange() + execCommand (HTTP, iOS)
+       M3: window.prompt()       (absolute fallback for manual copy)
+══════════════════════════════════════════════════════════════ */
+async function copyURL() {
+  const textarea = document.getElementById('url-display');
+  const url      = textarea.value.trim();
+  if (!url) return;
+
+  const btn  = document.getElementById('copy-btn');
+  const icon = document.getElementById('copy-icon');
+  const lbl  = document.getElementById('copy-label');
+  let success = false;
+
+  // ── M1: Clipboard API ─────────────────────────────────────
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(url);
+      success = true;
+    } catch (e) {
+      console.warn('[copy] Clipboard API failed:', e);
+    }
+  }
+
+  // ── M2: select() + execCommand (iOS/Android/HTTP) ─────────
+  if (!success) {
+    try {
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length); // iOS mandatory
+      success = document.execCommand('copy');
+      textarea.blur();
+    } catch (e) {
+      console.warn('[copy] execCommand failed:', e);
+    }
+  }
+
+  // ── M3: window.prompt() — manual fallback ─────────────────
+  if (!success) {
+    window.prompt('Copiez votre lien (Ctrl+C ou ⌘+C) :', url);
+    success = true;
+  }
+
+  // ── Feedback ──────────────────────────────────────────────
+  if (success) {
+    textarea.classList.add('copy-success');
+    btn.classList.replace('bg-indigo-600','bg-emerald-600');
+    btn.classList.replace('hover:bg-indigo-500','hover:bg-emerald-500');
+    icon.className  = 'fa-solid fa-check text-sm';
+    lbl.textContent = 'Copié !';
+    showToast('Lien copié dans le presse-papiers !', 'ok');
+
+    setTimeout(() => {
+      textarea.classList.remove('copy-success');
+      btn.classList.replace('bg-emerald-600','bg-indigo-600');
+      btn.classList.replace('hover:bg-emerald-500','hover:bg-indigo-500');
+      icon.className  = 'fa-regular fa-copy text-sm';
+      lbl.textContent = 'Copier le lien';
+    }, 2500);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   13. AVATAR RENDERER
+══════════════════════════════════════════════════════════════ */
+function renderAvatarIn(container, data, size = 'sm') {
+  if (data.av === 'im' && data.ac) {
+    container.style.background = 'transparent';
+    container.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = data.ac; img.alt = 'Avatar'; img.className = 'w-full h-full object-cover';
+    img.onerror = () => { container.textContent = data.n ? data.n[0].toUpperCase() : '?'; };
+    container.appendChild(img);
+  } else if (data.av === 'em' && data.ac) {
+    container.innerHTML = data.ac;
+    container.style.background = 'linear-gradient(135deg,#1e293b,#334155)';
+  } else {
+    container.innerHTML = data.n ? data.n[0].toUpperCase() : '?';
+    container.style.background = '';
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   14. LIVE PREVIEW (desktop)
+══════════════════════════════════════════════════════════════ */
+function updatePreview() {
+  autoSave();
+
+  const data      = collectData();
+  const screen    = document.getElementById('preview-screen');
+  const prevLinks = document.getElementById('prev-links');
+  const prevAv    = document.getElementById('prev-avatar');
+
+  screen.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne;
+
+  if (data.m === 0) {
+    screen.className = 'min-h-[440px] p-4 flex flex-col items-center gap-3 transition-all duration-500 overflow-hidden';
+    screen.style.background = 'linear-gradient(160deg,#f8fafc 0%,#e2e8f0 100%)';
+  } else {
+    screen.style.background = '';
+    screen.className = `min-h-[440px] p-4 flex flex-col items-center gap-3 transition-all duration-500 overflow-hidden ${PREVIEW_BG[data.t] || 'bg-slate-950'}`;
+  }
+
+  renderAvatarIn(prevAv, data, 'sm');
+
+  const nameEl = document.getElementById('prev-name');
+  const bioEl  = document.getElementById('prev-bio');
+  nameEl.textContent = data.n || 'Votre Nom';
+  bioEl.textContent  = data.b || 'Votre bio…';
+  nameEl.style.color = data.m === 0 ? '#1e293b' : '#fff';
+  bioEl.style.color  = data.m === 0 ? '#64748b' : '#94a3b8';
+  nameEl.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne;
+
+  prevLinks.innerHTML = '';
+  let count = 0;
+  data.l.forEach(item => {
+    if (count >= 4) return;
+    if (item.type === 'sep') {
+      const sep = document.createElement('p');
+      sep.className = 'text-center text-[8px] uppercase tracking-widest font-bold py-0.5';
+      sep.style.color = data.m === 0 ? '#94a3b8' : 'rgba(255,255,255,.4)';
+      sep.textContent = item.t || '—';
+      prevLinks.appendChild(sep);
+    } else {
+      const themeClass  = data.cc ? 'theme-custom' : `theme-${data.t}`;
+      const bstyleClass = data.bs === 'outline' ? 'bstyle-outline' : data.bs === 'shadow' ? 'bstyle-shadow' : '';
+      const btn = document.createElement('div');
+      const icon = detectIcon(item.t);
+      btn.className = `w-full ${themeClass} ${bstyleClass} text-[10px] font-semibold py-1.5 px-2.5 truncate transition flex items-center justify-center gap-1.5 ${data.r || 'rounded-xl'}`;
+      btn.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne;
+      if (data.cc) btn.style.background = data.cc;
+      btn.innerHTML = `<i class="${icon} text-[9px] opacity-80"></i><span>${item.t || 'Lien sans titre'}</span>`;
+      prevLinks.appendChild(btn);
+      count++;
+    }
+  });
+
+  if (data.l.length > 4) {
+    const more = document.createElement('p');
+    more.className = 'text-center text-[9px]';
+    more.style.color = data.m === 0 ? '#94a3b8' : '#475569';
+    more.textContent = `+${data.l.length - 4} autre(s)…`;
+    prevLinks.appendChild(more);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   15. VISITOR PAGE RENDERER
+══════════════════════════════════════════════════════════════ */
+function renderVisitor(data) {
+  try {
+    const vApp   = document.getElementById('visitor-app');
+    const theme  = data.t  || 'blue';
+    const radius = data.r  || 'rounded-xl';
+    const font   = data.f  || 'syne';
+    const mode   = data.m === 0 ? 'light' : 'dark';
+    const cc     = data.cc || '';
+    const bs     = data.bs || 'solid';
+
+    // Inject custom color if needed
+    if (cc) injectCustomColorStyle(cc);
+
+    const bgClass = (VISITOR_BG[mode] || VISITOR_BG.dark)[theme] || 'vbg-dark-blue';
+    vApp.className = `min-h-screen flex items-center justify-center py-16 px-4 transition-all duration-500 ${bgClass}`;
+    if (mode === 'light') vApp.classList.add('visitor-light');
+
+    document.body.style.fontFamily = FONT_STACK[font] || FONT_STACK.syne;
+
+    renderAvatarIn(document.getElementById('v-avatar'), data, 'lg');
+    document.getElementById('v-name').textContent = data.n || '';
+    document.getElementById('v-bio').textContent  = data.b || '';
+    document.title = (data.n ? `${data.n} — ` : '') + 'BioLink';
+
+    const linksEl = document.getElementById('v-links');
+    linksEl.innerHTML = '';
+    let linkIdx = 0;
+
+    (data.l || []).forEach(item => {
+      if (item.type === 'sep') {
+        const sep = document.createElement('div');
+        sep.className = 'visitor-separator';
+        sep.style.animationDelay = `${linkIdx * 90}ms`;
+        sep.textContent = item.t || '';
+        linksEl.appendChild(sep);
+      } else {
+        if (!item.t && !item.u) return;
+        const themeClass  = cc ? 'theme-custom' : `theme-${theme}`;
+        const bstyleClass = bs === 'outline' ? 'bstyle-outline' : bs === 'shadow' ? 'bstyle-shadow' : '';
+        const icon = detectIcon(item.t);
+        const a = document.createElement('a');
+        a.href   = item.u || '#';
+        a.target = '_blank';
+        a.rel    = 'noopener noreferrer';
+        a.style.animationDelay = `${linkIdx * 90}ms`;
+        if (cc) a.style.background = cc;
+        a.className = `visitor-link flex items-center justify-center gap-3 w-full text-center font-medium text-base py-4 px-6 shadow-lg ${themeClass} ${bstyleClass} hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer ${radius}`;
+        a.innerHTML = `<i class="${icon} text-sm opacity-90"></i><span>${item.t || item.u}</span>`;
+        linksEl.appendChild(a);
+        linkIdx++;
+      }
+    });
+
+  } catch (err) {
+    console.error('renderVisitor error:', err);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   16. EXPORT / IMPORT JSON
+══════════════════════════════════════════════════════════════ */
+function exportJSON() {
+  const data = collectData();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mon-biolink.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Configuration exportée !', 'ok');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      restoreFromData(data);
+      showToast('Configuration importée avec succès !', 'ok');
+    } catch (err) {
+      showToast('Fichier JSON invalide.', 'err');
+    }
+    // Reset so same file can be re-imported
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   17. RESTORE FROM DATA OBJECT
+       Used by both import and localStorage restore
+══════════════════════════════════════════════════════════════ */
+function restoreFromData(data) {
+  if (!data) return;
+
+  // Basic fields
+  if (data.n !== undefined) document.getElementById('inp-name').value = data.n;
+  if (data.b !== undefined) document.getElementById('inp-bio').value  = data.b;
+
+  // Avatar
+  if (data.av) {
+    const avBtn = document.querySelector(`.av-type-opt[data-av="${data.av}"]`);
+    if (avBtn) selectAvatarType(avBtn);
+    if (data.av === 'em' && data.ac) document.getElementById('inp-avatar-emoji').value = data.ac;
+    if (data.av === 'im' && data.ac) document.getElementById('inp-avatar-img').value   = data.ac;
+  }
+
+  // Theme
+  if (data.cc) {
+    // Custom color
+    selectedCustomColor = data.cc;
+    document.getElementById('inp-custom-color').value = data.cc;
+    document.getElementById('custom-color-preview').style.background = data.cc;
+    document.getElementById('custom-color-clear').classList.remove('hidden');
+    injectCustomColorStyle(data.cc);
+  } else {
+    const themeBtn = document.querySelector(`.theme-opt[data-theme="${data.t || 'blue'}"]`);
+    if (themeBtn) selectTheme(themeBtn);
+  }
+
+  // Radius
+  if (data.r) {
+    const rBtn = document.querySelector(`.radius-opt[data-radius="${data.r}"]`);
+    if (rBtn) selectRadius(rBtn);
+  }
+
+  // Border style
+  if (data.bs) {
+    const bBtn = document.querySelector(`.bstyle-opt[data-bstyle="${data.bs}"]`);
+    if (bBtn) selectBorderStyle(bBtn);
+  }
+
+  // Font
+  if (data.f) {
+    const fBtn = document.querySelector(`.font-opt[data-font="${data.f}"]`);
+    if (fBtn) selectFont(fBtn);
+  }
+
+  // Dark mode (visitor page)
+  if (data.m !== undefined) {
+    selectedDarkMode = data.m;
+    const icon  = document.getElementById('mode-icon');
+    const label = document.getElementById('mode-label');
+    if (icon) icon.className    = selectedDarkMode === 1 ? 'fa-solid fa-moon text-indigo-400 text-[11px]' : 'fa-solid fa-sun text-amber-400 text-[11px]';
+    if (label) label.textContent = selectedDarkMode === 1 ? 'Page sombre' : 'Page claire';
+  }
+
+  // Links — clear container first
+  document.getElementById('links-container').innerHTML = '';
+  linkIdCounter = 0;
+  (data.l || []).forEach(item => {
+    if (item.type === 'sep') {
+      addSeparator();
+      // Fill the just-added separator's title
+      const last = document.querySelector('#links-container [data-id]:last-child .link-title');
+      if (last) last.value = item.t || '';
+    } else {
+      addLink();
+      const last = document.querySelector('#links-container [data-id]:last-child');
+      if (last) {
+        const titleInp = last.querySelector('.link-title');
+        const urlInp   = last.querySelector('.link-url');
+        if (titleInp) { titleInp.value = item.t || ''; onTitleChange(titleInp, parseInt(last.dataset.id)); }
+        if (urlInp)   urlInp.value = item.u || '';
+      }
+    }
+  });
+
+  updatePreview();
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   18. LOCALSTORAGE — AUTO-SAVE & RESTORE
+══════════════════════════════════════════════════════════════ */
+let _autoSaveTimer = null;
+
+function autoSave() {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => {
+    try {
+      const data = collectData();
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    } catch (e) { /* quota exceeded or private mode */ }
+  }, 600); // debounce 600ms
+}
+
+function restoreFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    restoreFromData(data);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   19. TOAST NOTIFICATION
+══════════════════════════════════════════════════════════════ */
+let _toastTimer = null;
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  clearTimeout(_toastTimer);
+  t.textContent = msg;
+  t.className = `show toast-${type}`;
+  _toastTimer = setTimeout(() => { t.className = ''; }, 2800);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   20. INIT — DOMContentLoaded
+══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+
+  // ── System dark mode badge ────────────────────────────────
+  updateSystemModeBadge();
+
+  // ── Bind live inputs ─────────────────────────────────────
+  const nameInp = document.getElementById('inp-name');
+  const bioInp  = document.getElementById('inp-bio');
+  if (nameInp) nameInp.addEventListener('input', updatePreview);
+  if (bioInp)  bioInp.addEventListener('input',  updatePreview);
+
+  // ── Default selections ────────────────────────────────────
+  const defaultTheme  = document.querySelector('.theme-opt[data-theme="blue"]');
+  const defaultRadius = document.querySelector('.radius-opt[data-radius="rounded-xl"]');
+  const defaultFont   = document.querySelector('.font-opt[data-font="syne"]');
+  const defaultAv     = document.querySelector('.av-type-opt[data-av="lt"]');
+  const defaultBStyle = document.querySelector('.bstyle-opt[data-bstyle="solid"]');
+
+  if (defaultTheme)  selectTheme(defaultTheme);
+  if (defaultRadius) selectRadius(defaultRadius);
+  if (defaultFont)   selectFont(defaultFont);
+  if (defaultAv)     selectAvatarType(defaultAv);
+  if (defaultBStyle) selectBorderStyle(defaultBStyle);
+
+  // ── Restore localStorage (overrides defaults if data exists) ─
+  const restored = restoreFromLocalStorage();
+  if (restored) {
+    showToast('Votre configuration a été restaurée.', 'ok');
+  }
+
+  // ── Visitor page mode sync ────────────────────────────────
+  const icon  = document.getElementById('mode-icon');
+  const label = document.getElementById('mode-label');
+  if (icon && label) {
+    icon.className    = selectedDarkMode === 1 ? 'fa-solid fa-moon text-indigo-400 text-[11px]' : 'fa-solid fa-sun text-amber-400 text-[11px]';
+    label.textContent = selectedDarkMode === 1 ? 'Page sombre' : 'Page claire';
+  }
+
+});
+</script>
+</body>
+</html>
