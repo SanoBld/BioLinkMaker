@@ -84,12 +84,22 @@
           <span id="sys-mode-label">Système : Sombre</span>
         </div>
 
-        <!-- Toggle mode page visiteur -->
-        <button type="button" onclick="togglePageMode()" title="Mode de la page visiteur"
-          class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-indigo-500 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-400/60 px-3 py-1.5 rounded-full transition-all">
-          <i id="mode-icon" class="fa-solid fa-moon text-indigo-400 text-[11px]"></i>
-          <span id="mode-label" class="hidden sm:inline">Page sombre</span>
-        </button>
+        <!-- Sélecteur mode page visiteur (3 états : Clair / Auto / Sombre) -->
+        <div class="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-0.5" title="Thème de la page visiteur">
+          <button type="button" onclick="setVisitorMode('light')" data-vmode="light"
+            class="visitor-mode-btn px-2.5 py-1 rounded-full text-xs border border-transparent transition-all" title="Page claire">
+            <i class="fa-solid fa-sun text-amber-400 text-[10px]"></i>
+          </button>
+          <button type="button" onclick="setVisitorMode('auto')" data-vmode="auto"
+            class="visitor-mode-btn px-2.5 py-1 rounded-full text-xs border border-transparent transition-all" title="Auto (système du visiteur)">
+            <i class="fa-solid fa-circle-half-stroke text-slate-400 text-[10px]"></i>
+          </button>
+          <button type="button" onclick="setVisitorMode('dark')" data-vmode="dark"
+            class="visitor-mode-btn px-2.5 py-1 rounded-full text-xs border border-transparent transition-all active" title="Page sombre">
+            <i class="fa-solid fa-moon text-indigo-400 text-[10px]"></i>
+          </button>
+        </div>
+        <span id="visitor-mode-label" class="hidden sm:inline text-xs text-slate-400">Page sombre</span>
       </div>
     </div>
   </nav>
@@ -347,25 +357,44 @@
 
       <!-- SECTION LIENS -->
       <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-2">
           <h2 class="font-display font-semibold text-sm uppercase tracking-widest text-slate-400">Liens</h2>
           <div class="flex items-center gap-2">
             <span id="link-count" class="text-xs bg-indigo-500/15 text-indigo-500 dark:text-indigo-300 px-2 py-0.5 rounded-full font-medium">0 lien</span>
-            <span class="text-xs text-slate-400 hidden sm:inline">· icônes auto</span>
+            <!-- Toggle Afficher les icônes -->
+            <button type="button" id="btn-toggle-icons" onclick="toggleShowIcons()"
+              title="Afficher / masquer les icônes sur les boutons"
+              class="flex items-center gap-1.5 text-xs border border-slate-200 dark:border-slate-700 hover:border-indigo-400 px-2.5 py-1 rounded-full transition-all text-slate-400 hover:text-indigo-400">
+              <i class="fa-solid fa-icons text-[10px]"></i>
+              <span id="icons-toggle-label">Icônes : On</span>
+            </button>
           </div>
         </div>
 
         <div id="links-container" class="space-y-3"></div>
 
-        <div class="flex gap-2">
+        <!-- Boutons d'ajout de blocs -->
+        <div class="grid grid-cols-2 gap-2">
           <button type="button" onclick="addLink()"
-            class="flex-1 flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-indigo-400 hover:text-indigo-400 transition group">
+            class="flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-indigo-400 hover:text-indigo-400 transition group">
             <i class="fa-solid fa-plus text-xs group-hover:rotate-90 transition-transform duration-200"></i>
             Ajouter un lien
           </button>
+          <button type="button" onclick="addAddress()"
+            title="Ajouter une adresse Google Maps"
+            class="flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-emerald-400 hover:text-emerald-400 transition">
+            <i class="fa-solid fa-location-dot text-xs"></i>
+            Adresse
+          </button>
+          <button type="button" onclick="addParagraph()"
+            title="Ajouter un bloc de texte libre"
+            class="flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-amber-400 hover:text-amber-400 transition">
+            <i class="fa-solid fa-align-left text-xs"></i>
+            Paragraphe
+          </button>
           <button type="button" onclick="addSeparator()"
             title="Ajouter un titre de section"
-            class="flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-violet-400 hover:text-violet-400 transition">
+            class="flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-400 hover:border-violet-400 hover:text-violet-400 transition">
             <i class="fa-solid fa-heading text-xs"></i>
             <span class="hidden sm:inline">Titre</span>
           </button>

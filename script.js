@@ -9,11 +9,12 @@
 let selectedTheme       = 'blue';
 let selectedRadius      = 'rounded-xl';
 let selectedFont        = 'syne';
-let selectedDarkMode    = 1;       // 1 = sombre, 0 = clair (page visiteur)
+let selectedDarkMode    = 'dark';   // 'dark' | 'light' | 'auto'
 let selectedAvatarType  = 'lt';
 let selectedBorderStyle = 'solid';
-let selectedCustomColor = '';      // '' = désactivé, '#xxxxxx' = couleur active
-let selectedAnimBg      = 'none';  // fond animé
+let selectedCustomColor = '';       // '' = désactivé, '#xxxxxx' = couleur active
+let selectedAnimBg      = 'none';   // fond animé
+let showIcons           = true;     // afficher les icônes sur les boutons
 let linkIdCounter       = 0;
 let previewVP           = 'mobile';
 let _sortable           = null;
@@ -72,9 +73,18 @@ const ICON_KEYWORDS = {
 
 
 /* ══════════════════════════════════════════════════════════════
+   UTILITAIRE — résoudre le mode visiteur effectif
+   Tient compte du mode 'auto' (préférence système du visiteur)
+══════════════════════════════════════════════════════════════ */
+function resolveVisitorMode(m) {
+  if (m === 'light') return 'light';
+  if (m === 'auto')  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'dark'; // 'dark' ou valeur inconnue → sombre par défaut
+}
+
+
+/* ══════════════════════════════════════════════════════════════
    3. ROUTAGE — détecte si on est sur la page visiteur (?p=...)
-      Les fonctions renderVisitor & renderAvatarIn sont hoistées
-      (déclarations de fonctions), donc elles sont disponibles ici.
 ══════════════════════════════════════════════════════════════ */
 (function route() {
   const params  = new URLSearchParams(window.location.search);
@@ -143,6 +153,28 @@ function syncEditorModeButtons() {
   document.querySelectorAll('.editor-mode-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.editorMode === mode);
   });
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   4c. SÉLECTEUR MODE PAGE VISITEUR (Clair / Auto / Sombre)
+══════════════════════════════════════════════════════════════ */
+function setVisitorMode(mode) {
+  selectedDarkMode = mode;
+  syncVisitorModeButtons();
+  updatePreview();
+  autoSave();
+}
+
+function syncVisitorModeButtons() {
+  document.querySelectorAll('.visitor-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.vmode === selectedDarkMode);
+  });
+  const label = document.getElementById('visitor-mode-label');
+  if (label) {
+    const labels = { dark: 'Page sombre', light: 'Page claire', auto: 'Page auto' };
+    label.textContent = labels[selectedDarkMode] || 'Page sombre';
+  }
 }
 
 
@@ -233,21 +265,31 @@ function injectCustomColorStyle(color) {
 
 
 /* ══════════════════════════════════════════════════════════════
-   7. TOGGLE MODE PAGE VISITEUR (Sombre / Clair)
+   7. TOGGLE ICÔNES AUTO
 ══════════════════════════════════════════════════════════════ */
-function togglePageMode() {
-  selectedDarkMode = selectedDarkMode === 1 ? 0 : 1;
-  const icon  = document.getElementById('mode-icon');
-  const label = document.getElementById('mode-label');
-  if (icon)  icon.className    = selectedDarkMode === 1 ? 'fa-solid fa-moon text-indigo-400 text-[11px]' : 'fa-solid fa-sun text-amber-400 text-[11px]';
-  if (label) label.textContent = selectedDarkMode === 1 ? 'Page sombre' : 'Page claire';
+function toggleShowIcons() {
+  showIcons = !showIcons;
+  const btn   = document.getElementById('btn-toggle-icons');
+  const label = document.getElementById('icons-toggle-label');
+  if (btn)   btn.classList.toggle('icons-on', showIcons);
+  if (label) label.textContent = showIcons ? 'Icônes : On' : 'Icônes : Off';
   updatePreview();
+  autoSave();
+}
+
+function syncIconsToggle() {
+  const btn   = document.getElementById('btn-toggle-icons');
+  const label = document.getElementById('icons-toggle-label');
+  if (btn)   btn.classList.toggle('icons-on', showIcons);
+  if (label) label.textContent = showIcons ? 'Icônes : On' : 'Icônes : Off';
 }
 
 
 /* ══════════════════════════════════════════════════════════════
-   8. GESTION DES LIENS
+   8. GESTION DES BLOCS (Lien, Séparateur, Adresse, Paragraphe)
 ══════════════════════════════════════════════════════════════ */
+
+/* ── Lien standard ── */
 function addLink() {
   const container = document.getElementById('links-container');
   const id = ++linkIdCounter;
@@ -285,6 +327,7 @@ function addLink() {
   initSortable();
 }
 
+/* ── Titre de section ── */
 function addSeparator() {
   const container = document.getElementById('links-container');
   const id = ++linkIdCounter;
@@ -304,6 +347,69 @@ function addSeparator() {
     <input type="text" placeholder="ex : Mes Réseaux • Mes Projets" maxlength="50"
       class="link-title w-full bg-white dark:bg-slate-900 border border-violet-200 dark:border-violet-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
       oninput="autoSave(); updatePreview();" />`;
+  container.appendChild(div);
+  updateLinkCount();
+  updatePreview();
+  initSortable();
+}
+
+/* ── Adresse Google Maps ── */
+function addAddress() {
+  const container = document.getElementById('links-container');
+  const id = ++linkIdCounter;
+  const div = document.createElement('div');
+  div.className   = 'link-item bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 rounded-xl p-4 relative';
+  div.dataset.id   = id;
+  div.dataset.type = 'addr';
+  div.innerHTML = `
+    <button type="button" onclick="removeLink(${id})" class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition">
+      <i class="fa-solid fa-xmark text-xs"></i>
+    </button>
+    <div class="flex items-center gap-2 mb-3">
+      <span class="drag-handle" title="Glisser"><i class="fa-solid fa-grip-vertical text-xs"></i></span>
+      <i class="fa-solid fa-location-dot text-emerald-500 text-xs"></i>
+      <span class="text-xs text-emerald-500 font-semibold uppercase tracking-wider">Adresse · Google Maps</span>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Libellé du bouton</label>
+        <input type="text" placeholder="ex : Notre boutique" maxlength="40"
+          class="link-title w-full bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+          oninput="autoSave(); updatePreview();" />
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Adresse complète</label>
+        <input type="text" placeholder="12 rue de la Paix, Paris"
+          class="link-addr w-full bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+          oninput="autoSave(); updatePreview();" />
+      </div>
+    </div>`;
+  container.appendChild(div);
+  updateLinkCount();
+  updatePreview();
+  initSortable();
+}
+
+/* ── Paragraphe de texte libre ── */
+function addParagraph() {
+  const container = document.getElementById('links-container');
+  const id = ++linkIdCounter;
+  const div = document.createElement('div');
+  div.className   = 'link-item bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-4 relative';
+  div.dataset.id   = id;
+  div.dataset.type = 'para';
+  div.innerHTML = `
+    <button type="button" onclick="removeLink(${id})" class="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition">
+      <i class="fa-solid fa-xmark text-xs"></i>
+    </button>
+    <div class="flex items-center gap-2 mb-3">
+      <span class="drag-handle" title="Glisser"><i class="fa-solid fa-grip-vertical text-xs"></i></span>
+      <i class="fa-solid fa-align-left text-amber-500 text-xs"></i>
+      <span class="text-xs text-amber-500 font-semibold uppercase tracking-wider">Paragraphe</span>
+    </div>
+    <textarea placeholder="Votre texte libre ici…" rows="3" maxlength="400"
+      class="link-title w-full bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition resize-none"
+      oninput="autoSave(); updatePreview();"></textarea>`;
   container.appendChild(div);
   updateLinkCount();
   updatePreview();
@@ -366,8 +472,18 @@ function collectData() {
   document.querySelectorAll('#links-container [data-id]').forEach(div => {
     const type = div.dataset.type || 'link';
     const t    = div.querySelector('.link-title')?.value.trim() || '';
-    const u    = type === 'link' ? (div.querySelector('.link-url')?.value.trim() || '') : '';
-    if (t || u) l.push({ type, t, u });
+
+    if (type === 'link') {
+      const u = div.querySelector('.link-url')?.value.trim() || '';
+      if (t || u) l.push({ type, t, u });
+    } else if (type === 'addr') {
+      const u = div.querySelector('.link-addr')?.value.trim() || '';
+      if (t || u) l.push({ type, t, u });
+    } else if (type === 'para') {
+      if (t) l.push({ type, t, u: '' });
+    } else if (type === 'sep') {
+      l.push({ type, t, u: '' });
+    }
   });
 
   return {
@@ -377,8 +493,9 @@ function collectData() {
     bs: selectedBorderStyle,
     r:  selectedRadius,
     f:  selectedFont,
-    m:  selectedDarkMode,
+    m:  selectedDarkMode,   // 'dark' | 'light' | 'auto'
     bg: selectedAnimBg,
+    ic: showIcons,
     av, ac, l
   };
 }
@@ -400,7 +517,6 @@ function generateURL() {
     const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
     const fullURL = `${window.location.origin}${window.location.pathname}?p=${encoded}`;
 
-    // Stockage global pour copyURL()
     window.__lastURL = fullURL;
 
     const textarea = document.getElementById('url-display');
@@ -414,7 +530,6 @@ function generateURL() {
     out.classList.remove('hidden');
     out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    // Auto-sélection du texte
     setTimeout(() => {
       textarea.focus();
       textarea.select();
@@ -441,25 +556,19 @@ async function copyURL() {
   const lbl      = document.getElementById('copy-label');
   let success    = false;
 
-  // M1 — Clipboard API (contexte sécurisé / HTTPS)
   if (navigator.clipboard) {
-    try {
-      await navigator.clipboard.writeText(url);
-      success = true;
-    } catch (e) { /* continue */ }
+    try { await navigator.clipboard.writeText(url); success = true; } catch (e) {}
   }
 
-  // M2 — select() + execCommand (HTTP, iOS, anciens navigateurs)
   if (!success) {
     try {
       textarea.value = url;
       textarea.select();
       textarea.setSelectionRange(0, url.length);
       success = document.execCommand('copy');
-    } catch (e) { /* continue */ }
+    } catch (e) {}
   }
 
-  // M3 — Fallback manuel (prompt)
   if (!success) {
     window.prompt('Copiez votre lien (Ctrl+C / ⌘+C) :', url);
     success = true;
@@ -540,10 +649,13 @@ function exportHTML() {
 
   const data     = collectData();
   const theme    = data.cc ? 'custom' : data.t;
-  const mode     = data.m === 0 ? 'light' : 'dark';
+  const mode     = resolveVisitorMode(data.m);
   const font     = data.f || 'syne';
   const animBg   = data.bg || 'none';
+  const icons    = data.ic !== false;
 
+  // Pour l'export HTML, les fonds animés sont toujours sombres, donc
+  // si mode 'light' est actif sans fond animé, on utilise le fond clair
   const bgClass = animBg !== 'none'
     ? `vbg-${animBg}`
     : (VISITOR_BG[mode] || VISITOR_BG.dark)[theme] || 'vbg-dark-blue';
@@ -573,11 +685,11 @@ function exportHTML() {
   const btnStyle  = (themeStyles[theme] || themeStyles.blue) + `border-radius:${radiusMap[data.r] || '.75rem'};`;
   const bsStyle   = data.bs === 'outline' ? 'background:transparent!important;border:2px solid currentColor!important;' : data.bs === 'shadow' ? 'box-shadow:0 8px 24px rgba(0,0,0,.35);' : '';
 
-  const meshCSS = animBg !== 'none' ? {
+  const meshCSS = animBg !== 'none' ? ({
     'mesh-purple': 'background:linear-gradient(-45deg,#0f172a,#4c1d95,#1e1b4b,#0e7490,#0f172a);background-size:400% 400%;animation:meshMove 10s ease infinite;',
     'mesh-sunset': 'background:linear-gradient(-45deg,#1f0a10,#7c2d12,#831843,#1e3a5f,#1f0a10);background-size:400% 400%;animation:meshMove 10s ease infinite;',
     'mesh-forest': 'background:linear-gradient(-45deg,#052e16,#064e3b,#1e3a5f,#14532d,#052e16);background-size:400% 400%;animation:meshMove 10s ease infinite;',
-  }[animBg] || '' : '';
+  }[animBg] || '') : '';
 
   let avatarHTML;
   if (data.av === 'im' && data.ac) {
@@ -588,14 +700,29 @@ function exportHTML() {
     avatarHTML = `<div style="width:5rem;height:5rem;border-radius:9999px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.75rem;font-weight:700;margin:0 auto 1rem;">${data.n ? data.n[0].toUpperCase() : '?'}</div>`;
   }
 
-  const textColor     = mode === 'light' ? '#1e293b' : '#fff';
-  const subTextColor  = mode === 'light' ? '#64748b' : '#94a3b8';
+  const textColor    = mode === 'light' ? '#1e293b' : '#fff';
+  const subTextColor = mode === 'light' ? '#64748b' : '#94a3b8';
+  const sepColor     = mode === 'light' ? '#94a3b8' : 'rgba(255,255,255,.45)';
+  const paraColor    = mode === 'light' ? '#334155' : 'rgba(255,255,255,.75)';
 
   const linksHTML = (data.l || []).map(item => {
     if (item.type === 'sep') {
-      return `<div style="text-align:center;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);font-weight:700;padding:.5rem 0;">${item.t || ''}</div>`;
+      return `<div style="text-align:center;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:${sepColor};font-weight:700;padding:.5rem 0;">${item.t || ''}</div>`;
+    }
+    if (item.type === 'para') {
+      return `<p style="text-align:center;font-size:.875rem;line-height:1.65;color:${paraColor};padding:.5rem .75rem;">${item.t || ''}</p>`;
+    }
+    if (item.type === 'addr') {
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.u || '')}`;
+      const label   = item.t || item.u || 'Adresse';
+      const iconHtml = icons ? `<span style="margin-right:.5rem;">📍</span>` : '';
+      return `<a href="${mapsUrl}" target="_blank" rel="noopener noreferrer"
+  style="display:flex;align-items:center;justify-content:center;width:100%;padding:1rem 1.5rem;font-weight:600;font-size:1rem;text-decoration:none;margin-bottom:.75rem;transition:transform .2s,filter .2s;${btnStyle}${bsStyle}"
+  onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
+  onmouseout="this.style.filter='';this.style.transform=''">${iconHtml}${label}</a>`;
     }
     if (!item.t && !item.u) return '';
+    const iconHtml = icons ? `` : '';
     return `<a href="${item.u || '#'}" target="_blank" rel="noopener noreferrer"
   style="display:flex;align-items:center;justify-content:center;gap:.75rem;width:100%;padding:1rem 1.5rem;font-weight:600;font-size:1rem;text-decoration:none;margin-bottom:.75rem;transition:transform .2s,filter .2s;${btnStyle}${bsStyle}"
   onmouseover="this.style.filter='brightness(1.08)';this.style.transform='translateY(-2px)'"
@@ -628,7 +755,7 @@ body{font-family:${fontStack[font] || fontStack.syne};min-height:100vh;display:f
 .vbg-light-rose{background:linear-gradient(160deg,#fff1f2,#fce7f3)}
 .container{width:100%;max-width:26rem;margin:0 auto}
 .link-anim{animation:fadeSlide .5s ease forwards;opacity:0}
-.watermark{text-align:center;color:rgba(255,255,255,.3);font-size:.7rem;margin-top:3rem}
+.watermark{text-align:center;color:${mode === 'light' ? '#94a3b8' : 'rgba(255,255,255,.3)'};font-size:.7rem;margin-top:3rem}
 </style>
 </head>
 <body class="${bgClass}">
@@ -710,10 +837,15 @@ function updatePreview() {
   const prevAv    = document.getElementById('prev-avatar');
   if (!screen) return;
 
+  // Résoudre le mode effectif pour l'aperçu
+  const effectiveMode = resolveVisitorMode(data.m);
+  const isLight = effectiveMode === 'light';
+  const icons   = data.ic !== false;
+
   screen.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne;
 
   // Fond de l'aperçu
-  if (data.m === 0) {
+  if (isLight && data.bg === 'none') {
     screen.className   = 'bg-gradient-to-b from-slate-100 to-slate-200 min-h-[440px] p-4 flex flex-col items-center gap-3 transition-all duration-500 overflow-hidden';
     screen.style.background = '';
   } else if (data.bg && data.bg !== 'none') {
@@ -728,20 +860,40 @@ function updatePreview() {
 
   const nameEl = document.getElementById('prev-name');
   const bioEl  = document.getElementById('prev-bio');
-  if (nameEl) { nameEl.textContent = data.n || 'Votre Nom'; nameEl.style.color = data.m === 0 ? '#1e293b' : '#fff'; nameEl.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne; }
-  if (bioEl)  { bioEl.textContent  = data.b || 'Votre bio…'; bioEl.style.color  = data.m === 0 ? '#64748b' : '#94a3b8'; }
+  if (nameEl) { nameEl.textContent = data.n || 'Votre Nom'; nameEl.style.color = isLight ? '#1e293b' : '#fff'; nameEl.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne; }
+  if (bioEl)  { bioEl.textContent  = data.b || 'Votre bio…'; bioEl.style.color  = isLight ? '#64748b' : '#94a3b8'; }
 
   prevLinks.innerHTML = '';
   let count = 0;
   data.l.forEach(item => {
-    if (count >= 4) return;
     if (item.type === 'sep') {
       const sep = document.createElement('p');
       sep.className   = 'text-center text-[8px] uppercase tracking-widest font-bold py-0.5';
-      sep.style.color = data.m === 0 ? '#94a3b8' : 'rgba(255,255,255,.4)';
+      sep.style.color = isLight ? '#94a3b8' : 'rgba(255,255,255,.4)';
       sep.textContent = item.t || '—';
       prevLinks.appendChild(sep);
+    } else if (item.type === 'para') {
+      if (count >= 4) return;
+      const p = document.createElement('p');
+      p.className   = 'text-center text-[9px] leading-relaxed px-1 py-0.5';
+      p.style.color = isLight ? '#334155' : 'rgba(255,255,255,.7)';
+      p.textContent = item.t || '';
+      prevLinks.appendChild(p);
+      count++;
+    } else if (item.type === 'addr') {
+      if (count >= 4) return;
+      const themeClass  = data.cc ? 'theme-custom' : `theme-${data.t}`;
+      const bstyleClass = data.bs === 'outline' ? 'bstyle-outline' : data.bs === 'shadow' ? 'bstyle-shadow' : '';
+      const btn = document.createElement('div');
+      btn.className = `w-full ${themeClass} ${bstyleClass} text-[10px] font-semibold py-1.5 px-2.5 truncate transition flex items-center justify-center gap-1.5 ${data.r || 'rounded-xl'}`;
+      btn.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne;
+      if (data.cc) btn.style.background = data.cc;
+      const iconHtml = icons ? `<i class="fa-solid fa-location-dot text-[9px] opacity-80"></i>` : '';
+      btn.innerHTML = `${iconHtml}<span>${item.t || item.u || 'Adresse'}</span>`;
+      prevLinks.appendChild(btn);
+      count++;
     } else {
+      if (count >= 4) return;
       const themeClass  = data.cc ? 'theme-custom' : `theme-${data.t}`;
       const bstyleClass = data.bs === 'outline' ? 'bstyle-outline' : data.bs === 'shadow' ? 'bstyle-shadow' : '';
       const btn = document.createElement('div');
@@ -749,7 +901,8 @@ function updatePreview() {
       btn.className = `w-full ${themeClass} ${bstyleClass} text-[10px] font-semibold py-1.5 px-2.5 truncate transition flex items-center justify-center gap-1.5 ${data.r || 'rounded-xl'}`;
       btn.style.fontFamily = FONT_STACK[data.f] || FONT_STACK.syne;
       if (data.cc) btn.style.background = data.cc;
-      btn.innerHTML = `<i class="${icn} text-[9px] opacity-80"></i><span>${item.t || 'Lien sans titre'}</span>`;
+      const iconHtml = icons ? `<i class="${icn} text-[9px] opacity-80"></i>` : '';
+      btn.innerHTML = `${iconHtml}<span>${item.t || 'Lien sans titre'}</span>`;
       prevLinks.appendChild(btn);
       count++;
     }
@@ -757,7 +910,7 @@ function updatePreview() {
   if (data.l.length > 4) {
     const more = document.createElement('p');
     more.className   = 'text-center text-[9px]';
-    more.style.color = data.m === 0 ? '#94a3b8' : '#475569';
+    more.style.color = isLight ? '#94a3b8' : '#475569';
     more.textContent = `+${data.l.length - 4} autre(s)…`;
     prevLinks.appendChild(more);
   }
@@ -773,19 +926,25 @@ function renderVisitor(data) {
     const theme  = data.t  || 'blue';
     const radius = data.r  || 'rounded-xl';
     const font   = data.f  || 'syne';
-    const mode   = data.m === 0 ? 'light' : 'dark';
     const cc     = data.cc || '';
     const bs     = data.bs || 'solid';
     const animBg = data.bg || 'none';
+    const icons  = data.ic !== false; // true par défaut
+
+    // Résoudre le mode effectif (auto = préférence système du visiteur)
+    const mode = resolveVisitorMode(data.m);
 
     if (cc) injectCustomColorStyle(cc);
 
+    // Si fond animé actif (tous sombres), forcer texte clair même en mode 'light'
+    const effectiveMode = (animBg !== 'none') ? 'dark' : mode;
+
     const bgClass = animBg !== 'none'
       ? `vbg-${animBg}`
-      : (VISITOR_BG[mode] || VISITOR_BG.dark)[theme] || 'vbg-dark-blue';
+      : (VISITOR_BG[effectiveMode] || VISITOR_BG.dark)[theme] || 'vbg-dark-blue';
 
     vApp.className = `min-h-screen flex items-center justify-center py-16 px-4 transition-all duration-500 ${bgClass}`;
-    if (mode === 'light') vApp.classList.add('visitor-light');
+    if (effectiveMode === 'light') vApp.classList.add('visitor-light');
 
     document.body.style.fontFamily = FONT_STACK[font] || FONT_STACK.syne;
 
@@ -805,7 +964,34 @@ function renderVisitor(data) {
         sep.style.animationDelay = `${linkIdx * 90}ms`;
         sep.textContent = item.t || '';
         linksEl.appendChild(sep);
+
+      } else if (item.type === 'para') {
+        const p = document.createElement('p');
+        p.className = 'visitor-paragraph';
+        p.style.animationDelay = `${linkIdx * 90}ms`;
+        p.textContent = item.t || '';
+        linksEl.appendChild(p);
+        linkIdx++;
+
+      } else if (item.type === 'addr') {
+        if (!item.t && !item.u) return;
+        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.u || '')}`;
+        const themeClass  = cc ? 'theme-custom' : `theme-${theme}`;
+        const bstyleClass = bs === 'outline' ? 'bstyle-outline' : bs === 'shadow' ? 'bstyle-shadow' : '';
+        const a   = document.createElement('a');
+        a.href   = mapsUrl;
+        a.target = '_blank';
+        a.rel    = 'noopener noreferrer';
+        a.style.animationDelay = `${linkIdx * 90}ms`;
+        if (cc) a.style.background = cc;
+        a.className = `visitor-link flex items-center justify-center gap-3 w-full text-center font-medium text-base py-4 px-6 shadow-lg ${themeClass} ${bstyleClass} hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer ${radius}`;
+        const iconHtml = icons ? `<i class="fa-solid fa-location-dot text-sm opacity-90"></i>` : '';
+        a.innerHTML = `${iconHtml}<span>${item.t || item.u || 'Adresse'}</span>`;
+        linksEl.appendChild(a);
+        linkIdx++;
+
       } else {
+        // Lien standard
         if (!item.t && !item.u) return;
         const themeClass  = cc ? 'theme-custom' : `theme-${theme}`;
         const bstyleClass = bs === 'outline' ? 'bstyle-outline' : bs === 'shadow' ? 'bstyle-shadow' : '';
@@ -817,7 +1003,8 @@ function renderVisitor(data) {
         a.style.animationDelay = `${linkIdx * 90}ms`;
         if (cc) a.style.background = cc;
         a.className = `visitor-link flex items-center justify-center gap-3 w-full text-center font-medium text-base py-4 px-6 shadow-lg ${themeClass} ${bstyleClass} hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 cursor-pointer ${radius}`;
-        a.innerHTML = `<i class="${icn} text-sm opacity-90"></i><span>${item.t || item.u}</span>`;
+        const iconHtml = icons ? `<i class="${icn} text-sm opacity-90"></i>` : '';
+        a.innerHTML = `${iconHtml}<span>${item.t || item.u}</span>`;
         linksEl.appendChild(a);
         linkIdx++;
       }
@@ -921,24 +1108,43 @@ function restoreFromData(data) {
     if (fBtn) selectFont(fBtn);
   }
 
-  // Mode page visiteur
+  // Mode page visiteur — rétrocompatibilité (0=light, 1=dark) + nouveau format string
   if (data.m !== undefined) {
-    selectedDarkMode = data.m;
-    const icon  = document.getElementById('mode-icon');
-    const label = document.getElementById('mode-label');
-    if (icon)  icon.className    = selectedDarkMode === 1 ? 'fa-solid fa-moon text-indigo-400 text-[11px]' : 'fa-solid fa-sun text-amber-400 text-[11px]';
-    if (label) label.textContent = selectedDarkMode === 1 ? 'Page sombre' : 'Page claire';
+    if      (data.m === 0)  selectedDarkMode = 'light';
+    else if (data.m === 1)  selectedDarkMode = 'dark';
+    else                    selectedDarkMode = data.m; // 'dark'|'light'|'auto'
+    syncVisitorModeButtons();
   }
 
-  // Liens
+  // Toggle icônes
+  if (data.ic !== undefined) {
+    showIcons = data.ic !== false;
+    syncIconsToggle();
+  }
+
+  // Liens — reconstruction des blocs
   const container = document.getElementById('links-container');
   if (container) { container.innerHTML = ''; linkIdCounter = 0; }
   (data.l || []).forEach(item => {
     if (item.type === 'sep') {
       addSeparator();
       const last = document.querySelector('#links-container [data-id]:last-child .link-title');
+      if (last) { last.value = item.t || ''; }
+    } else if (item.type === 'para') {
+      addParagraph();
+      const last = document.querySelector('#links-container [data-id]:last-child .link-title');
       if (last) last.value = item.t || '';
+    } else if (item.type === 'addr') {
+      addAddress();
+      const last = document.querySelector('#links-container [data-id]:last-child');
+      if (last) {
+        const titleInp = last.querySelector('.link-title');
+        const addrInp  = last.querySelector('.link-addr');
+        if (titleInp) titleInp.value = item.t || '';
+        if (addrInp)  addrInp.value  = item.u || '';
+      }
     } else {
+      // 'link' (type par défaut)
       addLink();
       const last = document.querySelector('#links-container [data-id]:last-child');
       if (last) {
@@ -1013,6 +1219,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateSystemModeBadge();
   syncEditorModeButtons();
+  syncVisitorModeButtons();
+  syncIconsToggle();
 
   // Bindings des champs en direct
   const nameInp = document.getElementById('inp-name');
@@ -1037,11 +1245,5 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restauration localStorage
   const restored = restoreFromLocalStorage();
   if (restored) showToast('Configuration restaurée.', 'ok');
-
-  // Sync icône mode page
-  const icon  = document.getElementById('mode-icon');
-  const label = document.getElementById('mode-label');
-  if (icon)  icon.className    = selectedDarkMode === 1 ? 'fa-solid fa-moon text-indigo-400 text-[11px]' : 'fa-solid fa-sun text-amber-400 text-[11px]';
-  if (label) label.textContent = selectedDarkMode === 1 ? 'Page sombre' : 'Page claire';
 
 });

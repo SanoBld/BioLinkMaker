@@ -100,6 +100,7 @@ body.font-mono     * { font-family: 'JetBrains Mono', monospace !important; }
 .visitor-light #v-bio             { color: #475569 !important; }
 .visitor-light .visitor-watermark { color: #94a3b8 !important; }
 .visitor-light .visitor-separator { color: #64748b !important; }
+.visitor-light .visitor-paragraph { color: #334155 !important; }
 
 
 /* ── Animated mesh backgrounds (visitor) ── */
@@ -129,6 +130,17 @@ body.font-mono     * { font-family: 'JetBrains Mono', monospace !important; }
   font-weight: 700; padding: .5rem 0 .25rem;
 }
 
+/* ── Paragraph block (visitor page) ── */
+.visitor-paragraph {
+  text-align: center;
+  font-size: .875rem;
+  line-height: 1.65;
+  color: rgba(255,255,255,.75);
+  padding: .5rem .75rem;
+  animation: fadeSlide .5s ease forwards;
+  opacity: 0;
+}
+
 
 /* ── URL result textarea ── */
 #url-display {
@@ -139,7 +151,6 @@ body.font-mono     * { font-family: 'JetBrains Mono', monospace !important; }
   width: 100%; min-height: 5rem; max-height: 8rem;
   resize: none; overflow-y: auto; overflow-x: hidden;
   padding: .875rem 1rem;
-  /* Sélection de texte pleinement activée */
   user-select: text !important;
   -webkit-user-select: text !important;
   -moz-user-select: text !important;
@@ -176,6 +187,28 @@ body.font-mono     * { font-family: 'JetBrains Mono', monospace !important; }
 }
 .dark .editor-mode-btn.active {
   background: rgba(99,102,241,.25) !important;
+}
+
+/* ── Visitor mode toggle buttons ── */
+.visitor-mode-btn.active {
+  background: rgba(99,102,241,.15) !important;
+  border-color: #6366f1 !important;
+  color: #a5b4fc !important;
+}
+.dark .visitor-mode-btn.active {
+  background: rgba(99,102,241,.25) !important;
+}
+
+/* ── Icons toggle active state ── */
+#btn-toggle-icons.icons-on {
+  border-color: #6366f1 !important;
+  color: #6366f1 !important;
+  background: rgba(99,102,241,.08);
+}
+.dark #btn-toggle-icons.icons-on {
+  border-color: #818cf8 !important;
+  color: #a5b4fc !important;
+  background: rgba(99,102,241,.15);
 }
 
 
