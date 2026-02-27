@@ -7,12 +7,21 @@
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    /* ── MODE SYSTÈME : applique dark AVANT le paint pour éviter le flash ── */
+    /* ── MODE ÉDITEUR : 'auto' | 'dark' | 'light' — appliqué avant le paint ── */
     (function() {
+      const stored = localStorage.getItem('biolink_editor_mode') || 'auto';
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      if (mq.matches) document.documentElement.classList.add('dark');
-      mq.addEventListener('change', e => {
-        document.documentElement.classList.toggle('dark', e.matches);
+      function applyEditorMode(mode) {
+        const isDark = mode === 'dark' || (mode === 'auto' && mq.matches);
+        document.documentElement.classList.toggle('dark', isDark);
+      }
+      applyEditorMode(stored);
+      window.__editorMode = stored;
+      mq.addEventListener('change', () => {
+        if ((localStorage.getItem('biolink_editor_mode') || 'auto') === 'auto') {
+          applyEditorMode('auto');
+          if (typeof updateSystemModeBadge === 'function') updateSystemModeBadge();
+        }
       });
     })();
   </script>
@@ -152,6 +161,16 @@
     .dark body            { background:#020617; }
     html.dark body        { background:#020617; }
 
+    /* ── Editor mode toggle button active state ── */
+    .editor-mode-btn.active {
+      background: rgba(99,102,241,.15) !important;
+      border-color: #6366f1 !important;
+      color: #a5b4fc !important;
+    }
+    .dark .editor-mode-btn.active {
+      background: rgba(99,102,241,.25) !important;
+    }
+
     /* ── Import hidden input ── */
     #import-file-input { display:none; }
 
@@ -206,6 +225,25 @@
           100% URL · Sans BDD
         </span>
 
+        <!-- Editor dark mode toggle -->
+        <div class="hidden sm:flex items-center gap-0.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full p-0.5" title="Mode de l'éditeur">
+          <button onclick="setEditorMode('light')" data-editor-mode="light"
+            class="editor-mode-btn flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full transition-all duration-200 border border-transparent"
+            title="Éditeur clair">
+            <i class="fa-solid fa-sun text-amber-400 text-[10px]"></i>
+          </button>
+          <button onclick="setEditorMode('auto')" data-editor-mode="auto"
+            class="editor-mode-btn flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full transition-all duration-200 border border-transparent"
+            title="Éditeur auto (système)">
+            <i class="fa-solid fa-circle-half-stroke text-slate-400 text-[10px]"></i>
+          </button>
+          <button onclick="setEditorMode('dark')" data-editor-mode="dark"
+            class="editor-mode-btn flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full transition-all duration-200 border border-transparent"
+            title="Éditeur sombre">
+            <i class="fa-solid fa-moon text-indigo-400 text-[10px]"></i>
+          </button>
+        </div>
+
         <!-- System mode indicator -->
         <div id="sys-mode-badge"
           class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2.5 py-1 rounded-full">
@@ -226,7 +264,7 @@
 
 
   <!-- ── MAIN GRID ── -->
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-10 grid lg:grid-cols-5 gap-8">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
 
     <!-- ═══════════════════════════════════
          EDITOR PANEL (left, 3 cols)
@@ -527,8 +565,8 @@
           spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
 
         <div class="flex gap-2">
-          <button onclick="copyURL()" id="copy-btn"
-            class="flex-1 flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl shadow-xl active:scale-95 transition-all">
+          <button data-action="copy-url" id="copy-btn"
+            class="flex-1 flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl shadow-xl active:scale-95 transition-all cursor-pointer">
             <i id="copy-icon" class="fa-regular fa-copy text-sm"></i>
             <span id="copy-label">Copier le lien</span>
           </button>
@@ -547,8 +585,8 @@
     <!-- ═══════════════════════════════════
          PREVIEW PANEL (right, 2 cols)
     ═══════════════════════════════════ -->
-    <div class="hidden lg:flex lg:col-span-2 flex-col">
-      <div class="sticky top-24">
+    <div class="flex lg:col-span-2 flex-col">
+      <div class="lg:sticky lg:top-24">
 
         <p class="text-xs text-slate-400 uppercase tracking-widest mb-3 font-medium">Aperçu en direct</p>
 
@@ -725,10 +763,39 @@ function updateSystemModeBadge() {
 
 // Live listener — user changes system theme at runtime
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-  document.documentElement.classList.toggle('dark', e.matches);
+  const stored = localStorage.getItem('biolink_editor_mode') || 'auto';
+  if (stored === 'auto') {
+    document.documentElement.classList.toggle('dark', e.matches);
+  }
   updateSystemModeBadge();
   updatePreview(); // Refresh preview colors
 });
+
+
+/* ══════════════════════════════════════════════════════════════
+   4b. EDITOR MODE TOGGLE (Clair / Auto / Sombre)
+══════════════════════════════════════════════════════════════ */
+function setEditorMode(mode) {
+  // Persist
+  localStorage.setItem('biolink_editor_mode', mode);
+
+  // Apply dark class
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const isDark = mode === 'dark' || (mode === 'auto' && mq.matches);
+  document.documentElement.classList.toggle('dark', isDark);
+
+  // Update button active states
+  document.querySelectorAll('.editor-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.editorMode === mode);
+  });
+}
+
+function syncEditorModeButtons() {
+  const mode = localStorage.getItem('biolink_editor_mode') || 'auto';
+  document.querySelectorAll('.editor-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.editorMode === mode);
+  });
+}
 
 
 /* ══════════════════════════════════════════════════════════════
@@ -1372,12 +1439,29 @@ function showToast(msg, type = 'ok') {
 
 
 /* ══════════════════════════════════════════════════════════════
+   20b. EVENT DELEGATION — survives DOM refreshes
+        Écoute TOUS les clics sur le document. Si la cible
+        possède data-action="copy-url", on copie le lien.
+══════════════════════════════════════════════════════════════ */
+document.addEventListener('click', function(e) {
+  // Remonte jusqu'à trouver un élément avec data-action (gère les clics sur les enfants)
+  const target = e.target.closest('[data-action="copy-url"]');
+  if (target) {
+    copyURL();
+  }
+});
+
+
+/* ══════════════════════════════════════════════════════════════
    20. INIT — DOMContentLoaded
 ══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
 
   // ── System dark mode badge ────────────────────────────────
   updateSystemModeBadge();
+
+  // ── Sync editor mode toggle buttons ──────────────────────
+  syncEditorModeButtons();
 
   // ── Bind live inputs ─────────────────────────────────────
   const nameInp = document.getElementById('inp-name');
